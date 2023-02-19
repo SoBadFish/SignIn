@@ -1,0 +1,55 @@
+join-display: true
+
+border-lore:
+  - "&r&b{mon} &7月 签到"
+  - "&r&7您已累计签到 &e{count} &7天"
+  - "&r&7您当前拥有 &a{r} &7张补签卡"
+
+
+#签到奖励
+sign-reward:
+  "default":
+    other-rewards:
+      "0.15":
+        - "give @p 388 1&一颗绿宝石"
+    rewards:
+     - "givemoney @p 100&100金币"
+  "3":
+    other-rewards:
+      "0.15":
+        - "give @p 264 1&一颗绿宝石"
+    rewards:
+      - "give @p 264 1&一颗钻石"
+  "5":
+    other-rewards:
+      "0.15":
+        - "give @p 264 1&一颗绿宝石"
+    rewards:
+      - "give @p 264 1&一颗钻石"
+  "7":
+    other-rewards:
+      "0.15":
+        - "give @p 264 1&一颗绿宝石"
+    rewards:
+      - "give @p 264 1&一颗钻石"
+#TODO
+#累计奖励奖励
+sign-reward-day:
+  "3":
+    other-rewards:
+      "0.15":
+        - "give @p 264 1&一颗绿宝石"
+    rewards:
+      - "give @p 264 1&一颗钻石"
+
+# 固定日期奖励
+date-reward-sign:
+  "6-1":
+    display: "儿童节礼包"
+    rewards:
+      - "give @p 264 1&一颗钻石"
+
+
+
+
+
