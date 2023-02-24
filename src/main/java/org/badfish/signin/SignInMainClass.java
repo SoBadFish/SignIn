@@ -49,13 +49,18 @@ public class SignInMainClass extends PluginBase {
         boolean ver = false;
         //双核心兼容
         try {
-            Class c = Class.forName("cn.nukkit.Nukkit");
+            Class<?> c = Class.forName("cn.nukkit.Nukkit");
             c.getField("NUKKIT_PM1E");
             ver = true;
 
-        } catch (ClassNotFoundException | NoSuchFieldException ignore) {
-
+        } catch (ClassNotFoundException | NoSuchFieldException ignore) { }
+        try {
+            Class<?> c = Class.forName("cn.nukkit.Nukkit");
+            "Nukkit PetteriM1 Edition".equalsIgnoreCase(c.getField("NUKKIT").get(c).toString());
+            ver = true;
+        } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException ignore) {
         }
+
         AbstractFakeInventory.IS_PM1E = ver;
         if(ver){
             this.getLogger().info("当前插件运行在: Nukkit PM1E 核心上");
