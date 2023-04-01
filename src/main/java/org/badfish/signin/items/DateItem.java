@@ -9,6 +9,7 @@ import org.badfish.signin.SignInMainClass;
 import org.badfish.signin.data.DateRewardData;
 import org.badfish.signin.data.PlayerSignInData;
 import org.badfish.signin.data.SignInRewardData;
+import org.badfish.signin.proxy.ItemProxy;
 import org.badfish.signin.utils.ItemType;
 import org.badfish.signin.utils.Tool;
 
@@ -80,10 +81,10 @@ public class DateItem {
         }
 
 
-        Item item = Item.get(35,1);
+        Item item = ItemProxy.getItem("35:1");
         switch (Tool.getSignType(day)){
             case LAST:
-                item = Item.get(35,14);
+                item = ItemProxy.getItem("35:14");
                 if(!signIn){
                     lore.add(TextFormat.colorize('&',"&r&c未签到"));
                     lore.add("");
@@ -94,7 +95,7 @@ public class DateItem {
                 break;
             case NEXT:
                 if(!signIn) {
-                    item = Item.get(35,8);
+                    item = ItemProxy.getItem("35:8");
                     lore.add(TextFormat.colorize('&', "&r&c未签到"));
                     lore.add("");
                     lore.addAll(r);
@@ -113,7 +114,7 @@ public class DateItem {
                 break;
         }
         if(signIn){
-            item = Item.get(35,5);
+            item = ItemProxy.getItem("35:5");
             tag.putBoolean(TAG+"sign",true);
             lore.add(TextFormat.colorize('&',"&r&a已签到"));
             lore.add("");
