@@ -12,7 +12,7 @@ import org.badfish.signin.manager.ItemRewardManager;
 import org.badfish.signin.manager.PlayerSignManager;
 import org.badfish.signin.panel.DisplayPanel;
 import org.badfish.signin.panel.lib.AbstractFakeInventory;
-import org.badfish.signin.proxy.ItemProxy;
+
 import org.badfish.signin.utils.CommandType;
 
 import java.util.ArrayList;
@@ -41,7 +41,7 @@ public class SignInMainClass extends PluginBase {
         //检查核心兼容
         checkServer();
         loadConfig();
-        ItemProxy.init();
+
         this.getLogger().info("签到插件加载完成 by 某吃瓜咸鱼");
         this.getLogger().info("本插件完全免费 如果你是购买的，那你就被坑了");
         this.getServer().getPluginManager().registerEvents(new SignInListener(),this);
