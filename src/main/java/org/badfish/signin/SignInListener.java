@@ -7,8 +7,8 @@ import cn.nukkit.event.EventHandler;
 import cn.nukkit.event.Listener;
 import cn.nukkit.event.inventory.InventoryTransactionEvent;
 import cn.nukkit.event.player.PlayerJoinEvent;
+import cn.nukkit.event.player.PlayerLocallyInitializedEvent;
 import cn.nukkit.event.player.PlayerQuitEvent;
-import cn.nukkit.event.server.DataPacketReceiveEvent;
 import cn.nukkit.inventory.Inventory;
 import cn.nukkit.inventory.transaction.InventoryTransaction;
 import cn.nukkit.inventory.transaction.action.InventoryAction;
@@ -38,17 +38,23 @@ public class SignInListener implements Listener {
 
     private ArrayList<Player> isLogin = new ArrayList<>();
     @EventHandler
-    public void onJoinCheck(DataPacketReceiveEvent event){
-        if(event.getPacket() instanceof SetLocalPlayerAsInitializedPacket){
-            //玩家真正的进服
-            if(isLogin.contains(event.getPlayer())){
-                PlayerSignInData signManager = SignInMainClass.PLAYER_SIGN_IN_MANAGER.getPlayerData(event.getPlayer().getName());
-                if(!signManager.isSignIn(new Date())){
-                    DisplayPanel p = new DisplayPanel();
-                    p.sendMothPanel(event.getPlayer());
-                }
-                isLogin.remove(event.getPlayer());
+    public void onJoinCheck(PlayerLocallyInitializedEvent event){
+        //玩家真正的进服
+        if(isLogin.contains(event.getPlayer())){
+            PlayerSignInData signManager = SignInMainClass.PLAYER_SIGN_IN_MANAGER.getPlayerData(event.getPlayer().getName());
+            if(!signManager.isSignIn(new Date())){
+                DisplayPanel p = new DisplayPanel();
+                Server.getInstance().getScheduler().scheduleDelayedTask(
+                        SignInMainClass.MAIN_INSTANCE,
+                        () -> {
+                            if (event.getPlayer().isOnline()) {
+                                p.sendMothPanel(event.getPlayer());
+                            }
+                        },
+                        10
+                );
             }
+            isLogin.remove(event.getPlayer());
         }
     }
 
