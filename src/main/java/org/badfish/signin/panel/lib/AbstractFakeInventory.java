@@ -22,12 +22,22 @@ import java.util.concurrent.Executors;
  * @author SupermeMortal*/
 public abstract class AbstractFakeInventory extends ContainerInventory {
     public static boolean IS_PM1E = false;
+    public static boolean USE_GAME_VERSION = false;
     private static final BlockVector3 ZERO = new BlockVector3(0, 0, 0);
 
     private static final Map<Player, AbstractFakeInventory> OPEN = new ConcurrentHashMap<>();
 
     final Map<Player, List<BlockVector3>> blockPositions = new HashMap<>();
     private String title;
+
+    static {
+        try {
+            Class<?> c = Class.forName("cn.nukkit.GameVersion");
+            USE_GAME_VERSION = true;
+        } catch (ClassNotFoundException ignored) {
+
+        }
+    }
 
     AbstractFakeInventory(InventoryType type, InventoryHolder holder, String title) {
         super(holder, type);
@@ -79,9 +89,11 @@ public abstract class AbstractFakeInventory extends ContainerInventory {
             service.execute(() -> {
                 Vector3 blockPosition = blocks.get(index).asVector3();
                 UpdateBlockPacket updateBlock = new UpdateBlockPacket();
-                if(IS_PM1E){
-                    updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(who.protocol,who.getLevel().getBlock(blockPosition).getFullId());
-                }else{
+                if (USE_GAME_VERSION) {
+                    updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(who.getGameVersion(), who.getLevel().getBlock(blockPosition).getFullId());
+                } else if(IS_PM1E) {
+                    updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(who.protocol, who.getLevel().getBlock(blockPosition).getFullId());
+                }else {
                     updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(who.getLevel().getBlock(blockPosition).getFullId());
                 }
                 updateBlock.flags = UpdateBlockPacket.FLAG_ALL_PRIORITY;

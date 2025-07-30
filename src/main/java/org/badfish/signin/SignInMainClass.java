@@ -172,7 +172,11 @@ public class SignInMainClass extends PluginBase {
                 }
             }
             DisplayPanel p = new DisplayPanel();
-            p.sendMothPanel((Player) sender);
+            this.getServer().getScheduler().scheduleDelayedTask(
+                    SignInMainClass.MAIN_INSTANCE,
+                    () -> p.sendMothPanel((Player) sender),
+                    10
+            );
         }
         return true;
     }
