@@ -32,19 +32,32 @@ public class SignInMainClass extends PluginBase {
     public static PlayerSignManager PLAYER_SIGN_IN_MANAGER;
 
 
-
+    @Override
+    public void onLoad() {
+        MAIN_INSTANCE = this;
+    }
 
     @Override
     public void onEnable() {
-        MAIN_INSTANCE = this;
         this.getLogger().info("正在加载签到插件");
         //检查核心兼容
         checkServer();
         loadConfig();
 
+        this.getServer().getPluginManager().registerEvents(new SignInListener(),this);
+
         this.getLogger().info("签到插件加载完成 by 某吃瓜咸鱼");
         this.getLogger().info("本插件完全免费 如果你是购买的，那你就被坑了");
-        this.getServer().getPluginManager().registerEvents(new SignInListener(),this);
+    }
+
+    @Override
+    public void onDisable() {
+        if (PLAYER_SIGN_IN_MANAGER != null) {
+            for (PlayerSignInData signInData : PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()) {
+                signInData.save();
+            }
+        }
+        AbstractFakeInventory.shutdown();
     }
 
     private void checkServer(){
@@ -180,8 +193,5 @@ public class SignInMainClass extends PluginBase {
         }
         return true;
     }
-
-
-
 
 }

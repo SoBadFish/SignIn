@@ -25,6 +25,7 @@ import org.badfish.signin.items.RoundItem;
 import org.badfish.signin.manager.PlayerSignManager;
 import org.badfish.signin.panel.ChestInventoryPanel;
 import org.badfish.signin.panel.DisplayPanel;
+import com.nukkitx.fakeinventories.inventory.FakeInventory;
 import org.badfish.signin.items.DateItem;
 import org.badfish.signin.utils.ItemType;
 import org.badfish.signin.utils.Tool;
@@ -70,7 +71,7 @@ public class SignInListener implements Listener {
         InventoryTransaction transaction = event.getTransaction();
         for (InventoryAction action : transaction.getActions()) {
             for (Inventory inventory : transaction.getInventories()) {
-                if (inventory instanceof ChestInventoryPanel) {
+                if (inventory instanceof ChestInventoryPanel || inventory instanceof FakeInventory) {
                     event.setCancelled();
                     for (Player player : inventory.getViewers()) {
                         Item item = action.getSourceItem();
@@ -175,6 +176,7 @@ public class SignInListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e){
+        isLogin.remove(e.getPlayer());
         PlayerSignInData signInData = SignInMainClass.PLAYER_SIGN_IN_MANAGER.getPlayerData(e.getPlayer().getName());
         signInData.save();
     }

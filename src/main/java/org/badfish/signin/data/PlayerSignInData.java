@@ -114,6 +114,11 @@ public class PlayerSignInData {
         return false;
     }
 
+    @Override
+    public int hashCode() {
+        return playerName.hashCode();
+    }
+
     /**
      * 累计签到次数
      * */

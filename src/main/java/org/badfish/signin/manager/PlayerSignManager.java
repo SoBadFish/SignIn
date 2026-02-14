@@ -6,21 +6,24 @@ import org.badfish.signin.data.PlayerSignInData;
 import org.badfish.signin.utils.Tool;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author BadFish
  */
 public class PlayerSignManager {
 
-    private ArrayList<PlayerSignInData> playerSignInData;
+    private Map<String, PlayerSignInData> playerSignInData;
 
-    private PlayerSignManager(ArrayList<PlayerSignInData> signInData){
+    private PlayerSignManager(Map<String, PlayerSignInData> signInData){
         this.playerSignInData = signInData;
     }
 
     public static PlayerSignManager managerCreate(){
         Config config;
-        ArrayList<PlayerSignInData> dataArrayList = new ArrayList<>();
+        Map<String, PlayerSignInData> dataMap = new HashMap<>();
         PlayerSignInData signInData;
         for(String name: Tool.getDefaultFiles("players")){
             config = new Config(SignInMainClass.MAIN_INSTANCE.getDataFolder()+"/players/"+name+".yml",Config.YAML);
@@ -35,22 +38,18 @@ public class PlayerSignManager {
             if(signInData.getSignMonth() != Tool.geMonth()){
                 signInData.reset();
             }
-            dataArrayList.add(signInData);
+            dataMap.put(name, signInData);
         }
-        return new PlayerSignManager(dataArrayList);
+        return new PlayerSignManager(dataMap);
 
     }
 
-    public ArrayList<PlayerSignInData> getPlayerSignInData() {
-        return playerSignInData;
+    public Collection<PlayerSignInData> getPlayerSignInData() {
+        return playerSignInData.values();
     }
 
     public PlayerSignInData getPlayerData(String playerName){
-        PlayerSignInData signInData = new PlayerSignInData(playerName);
-        if(!playerSignInData.contains(signInData)){
-            playerSignInData.add(signInData);
-        }
-        return playerSignInData.get(playerSignInData.indexOf(signInData));
+        return playerSignInData.computeIfAbsent(playerName, PlayerSignInData::new);
     }
 
 }

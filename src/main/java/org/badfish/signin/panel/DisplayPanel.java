@@ -11,7 +11,9 @@ import cn.nukkit.utils.TextFormat;
 import org.badfish.signin.SignInMainClass;
 import org.badfish.signin.items.CumulativeItem;
 import org.badfish.signin.items.DateItem;
+import org.badfish.signin.panel.lib.AbstractFakeInventory;
 import org.badfish.signin.utils.Tool;
+import com.nukkitx.fakeinventories.inventory.DoubleChestFakeInventory;
 
 
 import java.util.Date;
@@ -27,8 +29,6 @@ public class DisplayPanel implements InventoryHolder {
     private static final int ITEM_INDEX = 36;
 
     private static final int LINE_SIZE = 9;
-
-
 
     /**
      * 画主页面
@@ -89,16 +89,18 @@ public class DisplayPanel implements InventoryHolder {
         displayPlayer(player,panel, TextFormat.colorize('&',"&b&l"+mon+"月签到"));
     }
 
-
-
-
-
-
     public void displayPlayer(Player player,Map<Integer, Item> itemMap,String name){
-        ChestInventoryPanel panel = new ChestInventoryPanel(this,name);
-        panel.setContents(itemMap);
-        panel.id = Entity.entityCount++;
-        player.addWindow(panel);
+        if (AbstractFakeInventory.USE_GAME_VERSION) {
+            DoubleChestFakeInventory panel = new DoubleChestFakeInventory(this);
+            panel.setName(name);
+            panel.setContents(itemMap);
+            player.addWindow(panel);
+        } else {
+            ChestInventoryPanel panel = new ChestInventoryPanel(this, name);
+            panel.setContents(itemMap);
+            panel.id = Entity.entityCount++;
+            player.addWindow(panel);
+        }
     }
 
 
