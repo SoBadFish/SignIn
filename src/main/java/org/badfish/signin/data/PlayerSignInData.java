@@ -1,7 +1,6 @@
 package org.badfish.signin.data;
 
 
-import cn.nukkit.utils.Config;
 import org.badfish.signin.SignInMainClass;
 import org.badfish.signin.utils.Tool;
 
@@ -130,12 +129,15 @@ public class PlayerSignInData {
         this.cumulativeCount = cumulativeCount;
     }
 
+    public String getPlayerName() {
+        return playerName;
+    }
+
+    public ArrayList<String> getSignIn() {
+        return signIn;
+    }
+
     public void save(){
-        Config config = new Config(SignInMainClass.MAIN_INSTANCE.getDataFolder()+"/players/"+playerName+".yml",Config.YAML);
-        config.set("signInDate",signIn);
-        config.set("signMonth",signMonth);
-        config.set("cumulativeCount",cumulativeCount);
-        config.set("retroactiveCount",retroactiveCount);
-        config.save();
+        SignInMainClass.DATA_STORAGE.save(this);
     }
 }

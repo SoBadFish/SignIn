@@ -12,6 +12,8 @@ import org.badfish.signin.manager.ItemRewardManager;
 import org.badfish.signin.manager.PlayerSignManager;
 import org.badfish.signin.panel.DisplayPanel;
 import org.badfish.signin.panel.lib.AbstractFakeInventory;
+import org.badfish.signin.storage.provider.DataStorageProvider;
+import org.badfish.signin.storage.DataStorageFactory;
 
 import org.badfish.signin.utils.CommandType;
 
@@ -30,6 +32,8 @@ public class SignInMainClass extends PluginBase {
     public static ItemRewardManager ITEM_REWARD_MANAGER;
 
     public static PlayerSignManager PLAYER_SIGN_IN_MANAGER;
+
+    public static DataStorageProvider DATA_STORAGE;
 
 
     @Override
@@ -52,10 +56,11 @@ public class SignInMainClass extends PluginBase {
 
     @Override
     public void onDisable() {
-        if (PLAYER_SIGN_IN_MANAGER != null) {
-            for (PlayerSignInData signInData : PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()) {
-                signInData.save();
-            }
+        if (PLAYER_SIGN_IN_MANAGER != null && DATA_STORAGE != null) {
+            DATA_STORAGE.saveAll(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData());
+        }
+        if (DATA_STORAGE != null) {
+            DATA_STORAGE.close();
         }
         AbstractFakeInventory.shutdown();
     }
@@ -93,8 +98,9 @@ public class SignInMainClass extends PluginBase {
         this.saveDefaultConfig();
         this.reloadConfig();
         ITEM_REWARD_MANAGER = ItemRewardManager.managerCreate(getConfig());
+        String storageType = getConfig().getString("storage-type", "yaml");
+        DATA_STORAGE = DataStorageFactory.create(storageType);
         PLAYER_SIGN_IN_MANAGER = PlayerSignManager.managerCreate();
-
     }
 
     @Override
@@ -106,8 +112,9 @@ public class SignInMainClass extends PluginBase {
                     if (type != null) {
                         switch (type) {
                             case RELOAD:
-                                for (PlayerSignInData signInData : PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()) {
-                                    signInData.save();
+                                if (PLAYER_SIGN_IN_MANAGER != null && DATA_STORAGE != null) {
+                                    DATA_STORAGE.saveAll(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData());
+                                    DATA_STORAGE.close();
                                 }
                                 loadConfig();
                                 sender.sendMessage("配置重启完成");

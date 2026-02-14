@@ -1,3 +1,6 @@
+# 存储类型: yaml / database (database 需要安装 YRDatabase 插件)
+storage-type: yaml
+
 join-display: true
 
 
