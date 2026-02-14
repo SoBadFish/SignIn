@@ -4,8 +4,8 @@ import com.yirankuma.yrdatabase.api.DatabaseManager;
 import com.yirankuma.yrdatabase.api.Repository;
 import com.yirankuma.yrdatabase.api.CacheStrategy;
 import com.yirankuma.yrdatabase.nukkit.YRDatabaseNukkit;
+import org.badfish.signin.SignInMainClass;
 import org.badfish.signin.data.PlayerSignInData;
-import org.badfish.signin.storage.SignInEntity;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,6 +27,13 @@ public class DatabaseDataStorageProvider implements DataStorageProvider {
     }
 
     @Override
+    public PlayerSignInData load(String playerName) {
+        return repository.findById(playerName).join()
+                .map(this::toPlayerData)
+                .orElse(null);
+    }
+
+    @Override
     public Collection<PlayerSignInData> loadAll() {
         List<SignInEntity> entities = repository.findAll().join();
         Collection<PlayerSignInData> result = new ArrayList<>();
@@ -39,6 +46,15 @@ public class DatabaseDataStorageProvider implements DataStorageProvider {
     @Override
     public void save(PlayerSignInData data) {
         repository.save(toEntity(data), CacheStrategy.WRITE_THROUGH).join();
+    }
+
+    @Override
+    public void saveAsync(PlayerSignInData data) {
+        SignInEntity entity = toEntity(data.snapshot());
+        repository.save(entity, CacheStrategy.WRITE_THROUGH).exceptionally(e -> {
+            SignInMainClass.MAIN_INSTANCE.getLogger().error("异步保存玩家数据失败: " + data.getPlayerName(), e);
+            return null;
+        });
     }
 
     @Override

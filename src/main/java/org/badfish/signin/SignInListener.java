@@ -14,7 +14,6 @@ import cn.nukkit.inventory.transaction.InventoryTransaction;
 import cn.nukkit.inventory.transaction.action.InventoryAction;
 import cn.nukkit.item.Item;
 import cn.nukkit.level.Sound;
-import cn.nukkit.network.protocol.SetLocalPlayerAsInitializedPacket;
 import cn.nukkit.utils.TextFormat;
 import org.badfish.signin.data.BaseRewardData;
 import org.badfish.signin.data.DateRewardData;
@@ -22,7 +21,6 @@ import org.badfish.signin.data.PlayerSignInData;
 import org.badfish.signin.data.SignInRewardData;
 import org.badfish.signin.items.CmdItem;
 import org.badfish.signin.items.RoundItem;
-import org.badfish.signin.manager.PlayerSignManager;
 import org.badfish.signin.panel.ChestInventoryPanel;
 import org.badfish.signin.panel.DisplayPanel;
 import com.nukkitx.fakeinventories.inventory.FakeInventory;
@@ -37,7 +35,8 @@ import java.util.Date;
  */
 public class SignInListener implements Listener {
 
-    private ArrayList<Player> isLogin = new ArrayList<>();
+    private final ArrayList<Player> isLogin = new ArrayList<>();
+
     @EventHandler
     public void onJoinCheck(PlayerLocallyInitializedEvent event){
         //玩家真正的进服
@@ -113,7 +112,7 @@ public class SignInListener implements Listener {
                                     case REWARD:
                                         ArrayList<BaseRewardData> arrayList = SignInMainClass.ITEM_REWARD_MANAGER.getPlayerAllCumulativeData(signInData);
                                         int maxCount = 0;
-                                        if(arrayList.size() > 0){
+                                        if(!arrayList.isEmpty()){
                                             for(BaseRewardData data: arrayList){
                                                 if(data.getDay() > maxCount){
                                                     maxCount = data.getDay();
@@ -123,6 +122,7 @@ public class SignInListener implements Listener {
                                         }
                                         if(maxCount > 0 && maxCount > signInData.getCumulativeCount()){
                                             signInData.setCumulativeCount(maxCount);
+                                            signInData.saveAsync();
                                         }
                                         //刷新布局
                                         inventory.setContents(DisplayPanel.getDatePanel(player));
@@ -152,6 +152,7 @@ public class SignInListener implements Listener {
             player.sendMessage(TextFormat.colorize('&',"&r"+dateRewardData.getDisplayName()+" &r&e奖励"));
             putPlayer(dateRewardData,player);
         }
+        signInData.saveAsync();
     }
 
     /**
@@ -169,7 +170,6 @@ public class SignInListener implements Listener {
                     player.sendMessage(TextFormat.colorize('&',"&d额外获得: &r"+cmdItem.getName()));
                     Server.getInstance().getCommandMap().dispatch(new ConsoleCommandSender(),cmdItem.getCmd().replace("@p",player.getName()));
                 }
-//
             }
         }
     }
@@ -177,7 +177,9 @@ public class SignInListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent e){
         isLogin.remove(e.getPlayer());
-        PlayerSignInData signInData = SignInMainClass.PLAYER_SIGN_IN_MANAGER.getPlayerData(e.getPlayer().getName());
-        signInData.save();
+        String playerName = e.getPlayer().getName();
+        PlayerSignInData signInData = SignInMainClass.PLAYER_SIGN_IN_MANAGER.getPlayerData(playerName);
+        signInData.saveAsync();
+        SignInMainClass.PLAYER_SIGN_IN_MANAGER.removePlayerData(playerName);
     }
 }

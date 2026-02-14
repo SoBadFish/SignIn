@@ -1,4 +1,4 @@
-package org.badfish.signin.storage;
+package org.badfish.signin.storage.provider;
 
 import com.yirankuma.yrdatabase.api.annotation.Column;
 import com.yirankuma.yrdatabase.api.annotation.PrimaryKey;

@@ -90,7 +90,7 @@ public class DisplayPanel implements InventoryHolder {
     }
 
     public void displayPlayer(Player player,Map<Integer, Item> itemMap,String name){
-        if (AbstractFakeInventory.USE_GAME_VERSION) {
+        if (AbstractFakeInventory.USE_GAME_VERSION) { // NKMOT使用内置的FakeInventory依赖
             DoubleChestFakeInventory panel = new DoubleChestFakeInventory(this);
             panel.setName(name);
             panel.setContents(itemMap);

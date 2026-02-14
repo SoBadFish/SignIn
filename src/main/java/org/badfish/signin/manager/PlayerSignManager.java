@@ -13,33 +13,44 @@ import java.util.Map;
  */
 public class PlayerSignManager {
 
-    private Map<String, PlayerSignInData> playerSignInData;
+    private Map<String, PlayerSignInData> playerSignInDataCache;
 
     private PlayerSignManager(Map<String, PlayerSignInData> signInData){
-        this.playerSignInData = signInData;
+        this.playerSignInDataCache = signInData;
     }
 
     public static PlayerSignManager managerCreate(){
-        Map<String, PlayerSignInData> dataMap = new HashMap<>();
-        for (PlayerSignInData signInData : SignInMainClass.DATA_STORAGE.loadAll()) {
-            if (signInData.getSignMonth() == -1) {
-                signInData.setSignMonth(Tool.geMonth());
-            }
-            //如果是新的一个月那就重置累计进度
-            if (signInData.getSignMonth() != Tool.geMonth()) {
-                signInData.reset();
-            }
-            dataMap.put(signInData.getPlayerName(), signInData);
-        }
-        return new PlayerSignManager(dataMap);
+        return new PlayerSignManager(new HashMap<>());
     }
 
     public Collection<PlayerSignInData> getPlayerSignInData() {
-        return playerSignInData.values();
+        return playerSignInDataCache.values();
     }
 
-    public PlayerSignInData getPlayerData(String playerName){
-        return playerSignInData.computeIfAbsent(playerName, PlayerSignInData::new);
+    public PlayerSignInData getPlayerData(String playerName) {
+        PlayerSignInData data = playerSignInDataCache.get(playerName);
+        if (data == null) {
+            data = SignInMainClass.DATA_STORAGE.load(playerName);
+            if (data == null) {
+                data = new PlayerSignInData(playerName);
+            }
+            // 月份重置检查
+            if (data.getSignMonth() == -1) {
+                data.setSignMonth(Tool.geMonth());
+            }
+            if (data.getSignMonth() != Tool.geMonth()) {
+                data.reset();
+            }
+            playerSignInDataCache.put(playerName, data);
+        }
+        return data;
     }
 
+    public void removePlayerData(String playerName) {
+        playerSignInDataCache.remove(playerName);
+    }
+
+    public boolean containsPlayer(String playerName) {
+        return playerSignInDataCache.containsKey(playerName);
+    }
 }

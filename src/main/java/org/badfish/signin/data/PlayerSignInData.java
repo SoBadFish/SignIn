@@ -4,6 +4,7 @@ package org.badfish.signin.data;
 import org.badfish.signin.SignInMainClass;
 import org.badfish.signin.utils.Tool;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -84,10 +85,19 @@ public class PlayerSignInData {
         return retroactiveCount;
     }
 
-    public void reset(){
+    public void reset() {
         setCumulativeCount(0);
         setSignMonth(Tool.geMonth());
-        save();
+        cleanOldSignInData();
+        saveAsync();
+    }
+
+    /**
+     * 清理非当月的签到日期数据
+     */
+    private void cleanOldSignInData() {
+        String currentPrefix = new SimpleDateFormat("yyyy-MM").format(new Date());
+        signIn.removeIf(date -> !date.startsWith(currentPrefix));
     }
 
     private ArrayList<String> getThisMonthSignInData(){
@@ -137,7 +147,22 @@ public class PlayerSignInData {
         return signIn;
     }
 
+    /**
+     * 创建当前数据的快照副本（用于异步保存）
+     */
+    public PlayerSignInData snapshot() {
+        PlayerSignInData copy = new PlayerSignInData(this.playerName, new ArrayList<>(this.signIn));
+        copy.setSignMonth(this.signMonth);
+        copy.setCumulativeCount(this.cumulativeCount);
+        copy.setRetroactiveCount(this.retroactiveCount);
+        return copy;
+    }
+
     public void save(){
         SignInMainClass.DATA_STORAGE.save(this);
+    }
+
+    public void saveAsync() {
+        SignInMainClass.DATA_STORAGE.saveAsync(this);
     }
 }

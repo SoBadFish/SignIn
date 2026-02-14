@@ -6,6 +6,7 @@ import cn.nukkit.Server;
 import cn.nukkit.command.Command;
 import cn.nukkit.command.CommandSender;
 import cn.nukkit.plugin.PluginBase;
+import cn.nukkit.scheduler.AsyncTask;
 import cn.nukkit.utils.TextFormat;
 import org.badfish.signin.data.PlayerSignInData;
 import org.badfish.signin.manager.ItemRewardManager;
@@ -57,7 +58,7 @@ public class SignInMainClass extends PluginBase {
     @Override
     public void onDisable() {
         if (PLAYER_SIGN_IN_MANAGER != null && DATA_STORAGE != null) {
-            DATA_STORAGE.saveAll(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData());
+            DATA_STORAGE.saveAll(new ArrayList<>(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()));
         }
         if (DATA_STORAGE != null) {
             DATA_STORAGE.close();
@@ -94,7 +95,7 @@ public class SignInMainClass extends PluginBase {
         return (ArrayList<String>) getConfig().getStringList("border-lore");
     }
 
-    private void loadConfig(){
+    private void loadConfig() {
         this.saveDefaultConfig();
         this.reloadConfig();
         ITEM_REWARD_MANAGER = ItemRewardManager.managerCreate(getConfig());
@@ -113,7 +114,7 @@ public class SignInMainClass extends PluginBase {
                         switch (type) {
                             case RELOAD:
                                 if (PLAYER_SIGN_IN_MANAGER != null && DATA_STORAGE != null) {
-                                    DATA_STORAGE.saveAll(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData());
+                                    DATA_STORAGE.saveAll(new ArrayList<>(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()));
                                     DATA_STORAGE.close();
                                 }
                                 loadConfig();
@@ -149,8 +150,13 @@ public class SignInMainClass extends PluginBase {
                                         Player p = Server.getInstance().getPlayer(playerName);
                                         if(p != null){
                                             players.add(p);
+                                        } else {
+                                            // 离线玩家直接加载数据
+                                            signInData = PLAYER_SIGN_IN_MANAGER.getPlayerData(playerName);
+                                            signInData.addRetroactiveCount(count);
+                                            signInData.save();
+                                            PLAYER_SIGN_IN_MANAGER.removePlayerData(playerName);
                                         }
-
                                     }
                                     for(Player player: players){
                                         if(player != null){
@@ -159,7 +165,7 @@ public class SignInMainClass extends PluginBase {
                                         }
                                         signInData = PLAYER_SIGN_IN_MANAGER.getPlayerData(playerName);
                                         signInData.addRetroactiveCount(count);
-
+                                        signInData.saveAsync();
                                     }
                                     sender.sendMessage(TextFormat.colorize('&',"&7成功给予玩家 &e"+send+" &2"+count+" &7张补签卡"));
 
@@ -177,10 +183,27 @@ public class SignInMainClass extends PluginBase {
                                 sender.sendMessage("/qd reload 重载配置文件");
                                 break;
                             case RESET:
-                                for (PlayerSignInData signInData : PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()) {
+                                sender.sendMessage("正在重置玩家数据...");
+                                // 重置缓存中的在线玩家（主线程，缓存操作）
+                                for (PlayerSignInData signInData : new ArrayList<>(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData())) {
                                     signInData.reset();
                                 }
-                                sender.sendMessage("重置完成");
+                                // 离线玩家：异步加载并重置
+                                Server.getInstance().getScheduler().scheduleAsyncTask(MAIN_INSTANCE, new AsyncTask() {
+                                    @Override
+                                    public void onRun() {
+                                        for (PlayerSignInData signInData : DATA_STORAGE.loadAll()) {
+                                            if (!PLAYER_SIGN_IN_MANAGER.containsPlayer(signInData.getPlayerName())) {
+                                                signInData.reset();
+                                            }
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onCompletion(Server server) {
+                                        sender.sendMessage("重置完成");
+                                    }
+                                });
                                 break;
                             default:
                                 break;
