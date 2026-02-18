@@ -27,6 +27,7 @@ import com.nukkitx.fakeinventories.inventory.FakeInventory;
 import org.badfish.signin.items.DateItem;
 import org.badfish.signin.utils.ItemType;
 import org.badfish.signin.utils.Tool;
+import cn.nukkit.scheduler.AsyncTask;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -41,20 +42,27 @@ public class SignInListener implements Listener {
     public void onJoinCheck(PlayerLocallyInitializedEvent event){
         //玩家真正的进服
         if(isLogin.contains(event.getPlayer())){
-            PlayerSignInData signManager = SignInMainClass.PLAYER_SIGN_IN_MANAGER.getPlayerData(event.getPlayer().getName());
-            if(!signManager.isSignIn(new Date())){
-                DisplayPanel p = new DisplayPanel();
-                Server.getInstance().getScheduler().scheduleDelayedTask(
-                        SignInMainClass.MAIN_INSTANCE,
-                        () -> {
-                            if (event.getPlayer().isOnline()) {
-                                p.sendMothPanel(event.getPlayer());
-                            }
-                        },
-                        10
-                );
-            }
             isLogin.remove(event.getPlayer());
+            Player player = event.getPlayer();
+            // 异步加载数据，避免阻塞主线程；加载完成后通过 putPlayerData 标记待验证，首次签到前会重新从 DB 拉取最新数据
+            Server.getInstance().getScheduler().scheduleAsyncTask(SignInMainClass.MAIN_INSTANCE, new AsyncTask() {
+                PlayerSignInData data;
+                @Override
+                public void onRun() {
+                    data = SignInMainClass.DATA_STORAGE.load(player.getName());
+                    if (data == null) data = new PlayerSignInData(player.getName());
+                    if (data.getSignMonth() == -1) data.setSignMonth(Tool.geMonth());
+                    if (data.getSignMonth() != Tool.geMonth()) data.reset();
+                }
+                @Override
+                public void onCompletion(Server server) {
+                    if (!player.isOnline()) return;
+                    SignInMainClass.PLAYER_SIGN_IN_MANAGER.putPlayerData(player.getName(), data);
+                    if (!data.isSignIn(new Date())) {
+                        new DisplayPanel().sendMothPanel(player);
+                    }
+                }
+            });
         }
     }
 
@@ -85,7 +93,41 @@ public class SignInListener implements Listener {
                                             case THIS:
                                                 if(item.getNamedTag().getBoolean(DateItem.TAG+"sign")){
                                                     player.sendMessage(TextFormat.colorize('&',"&2您已经签到过了"));
-                                                }else{
+                                                } else if (SignInMainClass.PLAYER_SIGN_IN_MANAGER.needsVerification(player.getName())) {
+                                                    // 从其他子服切换过来的首次签到，异步从 DB 拉取最新数据验证，防止重复签到
+                                                    SignInMainClass.PLAYER_SIGN_IN_MANAGER.markVerified(player.getName());
+                                                    final int verifyDay = day;
+                                                    final Inventory verifyInventory = inventory;
+                                                    Server.getInstance().getScheduler().scheduleAsyncTask(SignInMainClass.MAIN_INSTANCE, new AsyncTask() {
+                                                        PlayerSignInData fresh;
+                                                        @Override
+                                                        public void onRun() {
+                                                            fresh = SignInMainClass.DATA_STORAGE.load(player.getName());
+                                                        }
+                                                        @Override
+                                                        public void onCompletion(Server server) {
+                                                            if (!player.isOnline()) return;
+                                                            PlayerSignInData current = SignInMainClass.PLAYER_SIGN_IN_MANAGER.getPlayerData(player.getName());
+                                                            // 若本地缓存已签到（如快速重复点击），只刷新面板
+                                                            if (current.isSignIn(Tool.getDateByDay(verifyDay))) {
+                                                                verifyInventory.setContents(DisplayPanel.getDatePanel(player));
+                                                                return;
+                                                            }
+                                                            // 用 DB 最新数据覆盖缓存
+                                                            if (fresh != null) {
+                                                                SignInMainClass.PLAYER_SIGN_IN_MANAGER.refreshCache(player.getName(), fresh);
+                                                                current = fresh;
+                                                            }
+                                                            if (current.isSignIn(Tool.getDateByDay(verifyDay))) {
+                                                                // 其他子服已签到
+                                                                player.sendMessage(TextFormat.colorize('&', "&2您已经签到过了"));
+                                                                verifyInventory.setContents(DisplayPanel.getDatePanel(player));
+                                                            } else {
+                                                                signIn(player, current, verifyInventory, verifyDay);
+                                                            }
+                                                        }
+                                                    });
+                                                } else {
                                                     signIn(player,signInData,inventory,day);
                                                 }
                                                 break;
