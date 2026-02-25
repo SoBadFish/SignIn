@@ -6,12 +6,15 @@ import cn.nukkit.Server;
 import cn.nukkit.command.Command;
 import cn.nukkit.command.CommandSender;
 import cn.nukkit.plugin.PluginBase;
+import cn.nukkit.scheduler.AsyncTask;
 import cn.nukkit.utils.TextFormat;
 import org.badfish.signin.data.PlayerSignInData;
 import org.badfish.signin.manager.ItemRewardManager;
 import org.badfish.signin.manager.PlayerSignManager;
 import org.badfish.signin.panel.DisplayPanel;
 import org.badfish.signin.panel.lib.AbstractFakeInventory;
+import org.badfish.signin.storage.provider.DataStorageProvider;
+import org.badfish.signin.storage.DataStorageFactory;
 
 import org.badfish.signin.utils.CommandType;
 
@@ -31,20 +34,36 @@ public class SignInMainClass extends PluginBase {
 
     public static PlayerSignManager PLAYER_SIGN_IN_MANAGER;
 
-
+    public static DataStorageProvider DATA_STORAGE;
 
 
     @Override
-    public void onEnable() {
+    public void onLoad() {
         MAIN_INSTANCE = this;
+    }
+
+    @Override
+    public void onEnable() {
         this.getLogger().info("正在加载签到插件");
         //检查核心兼容
         checkServer();
         loadConfig();
 
+        this.getServer().getPluginManager().registerEvents(new SignInListener(),this);
+
         this.getLogger().info("签到插件加载完成 by 某吃瓜咸鱼");
         this.getLogger().info("本插件完全免费 如果你是购买的，那你就被坑了");
-        this.getServer().getPluginManager().registerEvents(new SignInListener(),this);
+    }
+
+    @Override
+    public void onDisable() {
+        if (PLAYER_SIGN_IN_MANAGER != null && DATA_STORAGE != null) {
+            DATA_STORAGE.saveAll(new ArrayList<>(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()));
+        }
+        if (DATA_STORAGE != null) {
+            DATA_STORAGE.close();
+        }
+        AbstractFakeInventory.shutdown();
     }
 
     private void checkServer(){
@@ -76,12 +95,13 @@ public class SignInMainClass extends PluginBase {
         return (ArrayList<String>) getConfig().getStringList("border-lore");
     }
 
-    private void loadConfig(){
+    private void loadConfig() {
         this.saveDefaultConfig();
         this.reloadConfig();
         ITEM_REWARD_MANAGER = ItemRewardManager.managerCreate(getConfig());
+        String storageType = getConfig().getString("storage-type", "yaml");
+        DATA_STORAGE = DataStorageFactory.create(storageType);
         PLAYER_SIGN_IN_MANAGER = PlayerSignManager.managerCreate();
-
     }
 
     @Override
@@ -93,8 +113,9 @@ public class SignInMainClass extends PluginBase {
                     if (type != null) {
                         switch (type) {
                             case RELOAD:
-                                for (PlayerSignInData signInData : PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()) {
-                                    signInData.save();
+                                if (PLAYER_SIGN_IN_MANAGER != null && DATA_STORAGE != null) {
+                                    DATA_STORAGE.saveAll(new ArrayList<>(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()));
+                                    DATA_STORAGE.close();
                                 }
                                 loadConfig();
                                 sender.sendMessage("配置重启完成");
@@ -129,8 +150,13 @@ public class SignInMainClass extends PluginBase {
                                         Player p = Server.getInstance().getPlayer(playerName);
                                         if(p != null){
                                             players.add(p);
+                                        } else {
+                                            // 离线玩家直接加载数据
+                                            signInData = PLAYER_SIGN_IN_MANAGER.getPlayerData(playerName);
+                                            signInData.addRetroactiveCount(count);
+                                            signInData.save();
+                                            PLAYER_SIGN_IN_MANAGER.removePlayerData(playerName);
                                         }
-
                                     }
                                     for(Player player: players){
                                         if(player != null){
@@ -139,7 +165,7 @@ public class SignInMainClass extends PluginBase {
                                         }
                                         signInData = PLAYER_SIGN_IN_MANAGER.getPlayerData(playerName);
                                         signInData.addRetroactiveCount(count);
-
+                                        signInData.saveAsync();
                                     }
                                     sender.sendMessage(TextFormat.colorize('&',"&7成功给予玩家 &e"+send+" &2"+count+" &7张补签卡"));
 
@@ -157,10 +183,27 @@ public class SignInMainClass extends PluginBase {
                                 sender.sendMessage("/qd reload 重载配置文件");
                                 break;
                             case RESET:
-                                for (PlayerSignInData signInData : PLAYER_SIGN_IN_MANAGER.getPlayerSignInData()) {
+                                sender.sendMessage("正在重置玩家数据...");
+                                // 重置缓存中的在线玩家（主线程，缓存操作）
+                                for (PlayerSignInData signInData : new ArrayList<>(PLAYER_SIGN_IN_MANAGER.getPlayerSignInData())) {
                                     signInData.reset();
                                 }
-                                sender.sendMessage("重置完成");
+                                // 离线玩家：异步加载并重置
+                                Server.getInstance().getScheduler().scheduleAsyncTask(MAIN_INSTANCE, new AsyncTask() {
+                                    @Override
+                                    public void onRun() {
+                                        for (PlayerSignInData signInData : DATA_STORAGE.loadAll()) {
+                                            if (!PLAYER_SIGN_IN_MANAGER.containsPlayer(signInData.getPlayerName())) {
+                                                signInData.reset();
+                                            }
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onCompletion(Server server) {
+                                        sender.sendMessage("重置完成");
+                                    }
+                                });
                                 break;
                             default:
                                 break;
@@ -180,8 +223,5 @@ public class SignInMainClass extends PluginBase {
         }
         return true;
     }
-
-
-
 
 }

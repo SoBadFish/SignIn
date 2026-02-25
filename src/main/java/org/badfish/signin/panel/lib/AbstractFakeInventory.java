@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 本类引用 SupermeMortal 的 FakeInventories 插件
@@ -26,16 +27,16 @@ public abstract class AbstractFakeInventory extends ContainerInventory {
     private static final BlockVector3 ZERO = new BlockVector3(0, 0, 0);
 
     private static final Map<Player, AbstractFakeInventory> OPEN = new ConcurrentHashMap<>();
+    private static final ExecutorService CLOSE_EXECUTOR = Executors.newSingleThreadExecutor();
 
     final Map<Player, List<BlockVector3>> blockPositions = new HashMap<>();
     private String title;
 
     static {
         try {
-            Class<?> c = Class.forName("cn.nukkit.GameVersion");
+            Class.forName("cn.nukkit.GameVersion");
             USE_GAME_VERSION = true;
         } catch (ClassNotFoundException ignored) {
-
         }
     }
 
@@ -78,22 +79,20 @@ public abstract class AbstractFakeInventory extends ContainerInventory {
      * @return 方块坐标*/
     protected abstract List<BlockVector3> onOpenBlock(Player who);
 
-    private ExecutorService service = Executors.newSingleThreadExecutor();
     @Override
     public void onClose(Player who) {
         super.onClose(who);
         OPEN.remove(who, this);
-        List<BlockVector3> blocks = blockPositions.get(who);
+        List<BlockVector3> blocks = blockPositions.remove(who);
+        if (blocks == null) return;
         for (int i = 0, size = blocks.size(); i < size; i++) {
             final int index = i;
-            service.execute(() -> {
+            CLOSE_EXECUTOR.execute(() -> {
                 Vector3 blockPosition = blocks.get(index).asVector3();
                 UpdateBlockPacket updateBlock = new UpdateBlockPacket();
-                if (USE_GAME_VERSION) {
-                    updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(who.getGameVersion(), who.getLevel().getBlock(blockPosition).getFullId());
-                } else if(IS_PM1E) {
+                if (IS_PM1E) {
                     updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(who.protocol, who.getLevel().getBlock(blockPosition).getFullId());
-                }else {
+                } else {
                     updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(who.getLevel().getBlock(blockPosition).getFullId());
                 }
                 updateBlock.flags = UpdateBlockPacket.FLAG_ALL_PRIORITY;
@@ -106,6 +105,21 @@ public abstract class AbstractFakeInventory extends ContainerInventory {
     }
 
 
+
+    /**
+     * 关闭线程池，插件卸载时调用
+     */
+    public static void shutdown() {
+        CLOSE_EXECUTOR.shutdown();
+        try {
+            if (!CLOSE_EXECUTOR.awaitTermination(3, TimeUnit.SECONDS)) {
+                CLOSE_EXECUTOR.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            CLOSE_EXECUTOR.shutdownNow();
+        }
+        OPEN.clear();
+    }
 
     @Override
     public String getTitle() {

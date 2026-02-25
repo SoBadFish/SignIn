@@ -1,56 +1,87 @@
 package org.badfish.signin.manager;
 
-import cn.nukkit.utils.Config;
 import org.badfish.signin.SignInMainClass;
 import org.badfish.signin.data.PlayerSignInData;
 import org.badfish.signin.utils.Tool;
 
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * @author BadFish
  */
 public class PlayerSignManager {
 
-    private ArrayList<PlayerSignInData> playerSignInData;
+    private Map<String, PlayerSignInData> playerSignInDataCache;
 
-    private PlayerSignManager(ArrayList<PlayerSignInData> signInData){
-        this.playerSignInData = signInData;
+    /** 标记从其他子服切换过来、数据尚未经过 DB 验证的玩家 */
+    private final Set<String> needsVerification = new HashSet<>();
+
+    private PlayerSignManager(Map<String, PlayerSignInData> signInData){
+        this.playerSignInDataCache = signInData;
     }
 
     public static PlayerSignManager managerCreate(){
-        Config config;
-        ArrayList<PlayerSignInData> dataArrayList = new ArrayList<>();
-        PlayerSignInData signInData;
-        for(String name: Tool.getDefaultFiles("players")){
-            config = new Config(SignInMainClass.MAIN_INSTANCE.getDataFolder()+"/players/"+name+".yml",Config.YAML);
-            signInData = new PlayerSignInData(name, (ArrayList<String>) config.getStringList("signInDate"));
-            signInData.setCumulativeCount(config.getInt("cumulativeCount",0));
-            signInData.setRetroactiveCount(config.getInt("retroactiveCount",0));
-            signInData.setSignMonth(config.getInt("signMonth",-1));
-            if(signInData.getSignMonth() == -1){
-                signInData.setSignMonth(Tool.geMonth());
+        return new PlayerSignManager(new HashMap<>());
+    }
+
+    public Collection<PlayerSignInData> getPlayerSignInData() {
+        return playerSignInDataCache.values();
+    }
+
+    public PlayerSignInData getPlayerData(String playerName) {
+        PlayerSignInData data = playerSignInDataCache.get(playerName);
+        if (data == null) {
+            data = SignInMainClass.DATA_STORAGE.load(playerName);
+            if (data == null) {
+                data = new PlayerSignInData(playerName);
             }
-            //如果是新的一个月那就重置累计进度
-            if(signInData.getSignMonth() != Tool.geMonth()){
-                signInData.reset();
+            // 月份重置检查
+            if (data.getSignMonth() == -1) {
+                data.setSignMonth(Tool.geMonth());
             }
-            dataArrayList.add(signInData);
+            if (data.getSignMonth() != Tool.geMonth()) {
+                data.reset();
+            }
+            playerSignInDataCache.put(playerName, data);
         }
-        return new PlayerSignManager(dataArrayList);
-
+        return data;
     }
 
-    public ArrayList<PlayerSignInData> getPlayerSignInData() {
-        return playerSignInData;
+    /**
+     * 异步加载完成后写入缓存，并标记需要在首次写操作前验证
+     */
+    public void putPlayerData(String playerName, PlayerSignInData data) {
+        playerSignInDataCache.put(playerName, data);
+        needsVerification.add(playerName);
     }
 
-    public PlayerSignInData getPlayerData(String playerName){
-        PlayerSignInData signInData = new PlayerSignInData(playerName);
-        if(!playerSignInData.contains(signInData)){
-            playerSignInData.add(signInData);
-        }
-        return playerSignInData.get(playerSignInData.indexOf(signInData));
+    /**
+     * 验证完成后用 DB 最新数据刷新缓存，不重置验证标记
+     */
+    public void refreshCache(String playerName, PlayerSignInData data) {
+        playerSignInDataCache.put(playerName, data);
     }
 
+    /** 判断该玩家是否需要在写操作前进行 DB 验证 */
+    public boolean needsVerification(String playerName) {
+        return needsVerification.contains(playerName);
+    }
+
+    /** 标记验证已完成 */
+    public void markVerified(String playerName) {
+        needsVerification.remove(playerName);
+    }
+
+    public void removePlayerData(String playerName) {
+        playerSignInDataCache.remove(playerName);
+        needsVerification.remove(playerName);
+    }
+
+    public boolean containsPlayer(String playerName) {
+        return playerSignInDataCache.containsKey(playerName);
+    }
 }

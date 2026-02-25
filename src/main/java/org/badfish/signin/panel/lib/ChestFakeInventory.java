@@ -49,9 +49,7 @@ public class ChestFakeInventory extends AbstractFakeInventory{
 
     void placeChest(Player who, BlockVector3 pos) {
         UpdateBlockPacket updateBlock = new UpdateBlockPacket();
-        if (USE_GAME_VERSION) {
-            updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(who.getGameVersion(), BlockID.CHEST, 0);
-        } else if (IS_PM1E) {
+        if (IS_PM1E) {
             updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(who.protocol, BlockID.CHEST, 0);
         } else {
             updateBlock.blockRuntimeId = GlobalBlockPalette.getOrCreateRuntimeId(BlockID.CHEST, 0);

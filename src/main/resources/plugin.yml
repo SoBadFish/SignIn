@@ -1,8 +1,10 @@
 name: SignIn
 main: org.badfish.signin.SignInMainClass
-version: 1.2.0
+version: "${version}"
 api: 1.0.11
 author: 某吃瓜咸鱼
+softdepend:
+  - YRDatabase
 commands:
   qd:
     description: "签到插件"
