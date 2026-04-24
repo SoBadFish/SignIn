@@ -135,16 +135,14 @@ public class SignInListener implements Listener {
                                                 player.sendMessage(TextFormat.colorize('&',"&c还未到签到时间 别急"));
                                                 break;
                                             case LAST:
-                                                if(item.getNamedTag().getBoolean(DateItem.TAG+"sign")){
+                                                if (signInData.isSignIn(Tool.getDateByDay(day))) {
                                                     player.sendMessage(TextFormat.colorize('&',"&2您已经签到过了"));
-                                                }else {
-                                                    if (signInData.getRetroactiveCount() > 0) {
-                                                        player.sendMessage(TextFormat.colorize('&', "补签成功 你消耗了 &21&r 张补签卡"));
-                                                        signInData.setRetroactiveCount(signInData.getRetroactiveCount() - 1);
-                                                        signIn(player, signInData, inventory, day);
-                                                    } else {
-                                                        player.sendMessage(TextFormat.colorize('&', "&c你没有补签卡"));
-                                                    }
+                                                } else if (signInData.getRetroactiveCount() > 0) {
+                                                    player.sendMessage(TextFormat.colorize('&', "补签成功 你消耗了 &21&r 张补签卡"));
+                                                    signInData.setRetroactiveCount(signInData.getRetroactiveCount() - 1);
+                                                    signIn(player, signInData, inventory, day);
+                                                } else {
+                                                    player.sendMessage(TextFormat.colorize('&', "&c你没有补签卡"));
                                                 }
                                                 break;
                                                 default:break;
@@ -181,8 +179,14 @@ public class SignInListener implements Listener {
     }
 
     private void signIn(Player player, PlayerSignInData signInData, Inventory inventory, int day){
+        Date signDate = Tool.getDateByDay(day);
+        if (signInData.isSignIn(signDate)) {
+            player.sendMessage(TextFormat.colorize('&', "&2您已经签到过了"));
+            inventory.setContents(DisplayPanel.getDatePanel(player));
+            return;
+        }
         player.getLevel().addSound(player.getPosition(), Sound.RANDOM_ORB,1,1,player);
-        signInData.addSign(Tool.getDateByDay(day));
+        signInData.addSign(signDate);
         inventory.setContents(DisplayPanel.getDatePanel(player));
         player.sendMessage(TextFormat.colorize('&',"&a恭喜您 签到成功!"));
         SignInRewardData signInRewardData = SignInMainClass.ITEM_REWARD_MANAGER.getRewardData(day);

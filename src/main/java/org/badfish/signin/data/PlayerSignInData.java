@@ -71,7 +71,9 @@ public class PlayerSignInData {
         if(signMonth != Tool.geMonth()){
             reset();
         }
-        signIn.add(Tool.getDateToString(date));
+        String dateStr = Tool.getDateToString(date);
+        if (signIn.contains(dateStr)) return;
+        signIn.add(dateStr);
     }
 
     public void setRetroactiveCount(int retroactiveCount) {
